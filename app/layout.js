@@ -1,15 +1,10 @@
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
+import { ClerkProvider } from "@clerk/nextjs";
+import { ConvexClientProvider } from "@/components/convex-client-provider";
+import Header from "@/components/header";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
   title: "Create Next App",
@@ -19,10 +14,20 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {children}
+      <body className={`${inter.className}`}>
+        <ClerkProvider
+        // appearance={{
+        //   signIn: {
+        //     baseTheme: [shadesOfPurple],
+        //     variables: { colorPrimary: "green" },
+        //   },
+        // }}
+        >
+          <ConvexClientProvider>
+            <Header />
+            <main className="min-h-screen">{children}</main>
+          </ConvexClientProvider>
+        </ClerkProvider>
       </body>
     </html>
   );
