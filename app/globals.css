@@ -126,5 +126,5 @@
 }
 
 @utility gradient-title {
-  @apply gradient font-extrabold tracking-tighter text-transparent bg-clip-text pb-2 pr-2;
+  @apply gradient font-extrabold tracking-tighter text-transparent bg-clip-text pb-1 pr-2;
 }
