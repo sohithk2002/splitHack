@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 
 // Create a new expense
 export const createExpense = mutation({
@@ -20,22 +21,8 @@ export const createExpense = mutation({
     groupId: v.optional(v.id("groups")),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    // Get the current user
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier)
-      )
-      .first();
-
-    if (!user) {
-      throw new Error("User not found");
-    }
+    // Use centralized getCurrentUser function
+    const user = await ctx.runQuery(internal.users.getCurrentUser);
 
     // If there's a group, verify the user is a member
     if (args.groupId) {
@@ -162,21 +149,8 @@ export const getExpensesBetweenUsers = query({
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const currentUser = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier)
-      )
-      .first();
-
-    if (!currentUser) {
-      throw new Error("User not found");
-    }
+    // Use centralized getCurrentUser function
+    const currentUser = await ctx.runQuery(internal.users.getCurrentUser);
 
     // Get all expenses where both users are involved (either as payer or in splits)
     const allExpenses = await ctx.db.query("expenses").collect();

@@ -1,23 +1,15 @@
-// convex/contacts.ts
+// convex/contacts.js
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 
 /* ──────────────────────────────────────────────────────────────────────────
    1. getAllContacts – 1‑to‑1 expense contacts + groups
    ──────────────────────────────────────────────────────────────────────── */
 export const getAllContacts = query({
   handler: async (ctx) => {
-    /* auth */
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    const currentUser = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier)
-      )
-      .first();
-    if (!currentUser) throw new Error("User not found");
+    // Use the centralized getCurrentUser instead of duplicating auth logic
+    const currentUser = await ctx.runQuery(internal.users.getCurrentUser);
 
     /* ── personal expenses where YOU are the payer ─────────────────────── */
     const expensesYouPaid = await ctx.db
@@ -80,10 +72,10 @@ export const getAllContacts = query({
       }));
 
     /* sort alphabetically */
-    contactUsers.sort((a, b) => a.name.localeCompare(b.name));
+    contactUsers.sort((a, b) => a?.name.localeCompare(b?.name));
     userGroups.sort((a, b) => a.name.localeCompare(b.name));
 
-    return { users: contactUsers, groups: userGroups };
+    return { users: contactUsers.filter(Boolean), groups: userGroups };
   },
 });
 
@@ -97,22 +89,15 @@ export const createGroup = mutation({
     members: v.array(v.id("users")),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    const currentUser = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier)
-      )
-      .first();
-    if (!currentUser) throw new Error("User not found");
+    // Use the centralized getCurrentUser instead of duplicating auth logic
+    const currentUser = await ctx.runQuery(internal.users.getCurrentUser);
 
     if (!args.name.trim()) throw new Error("Group name cannot be empty");
 
     const uniqueMembers = new Set(args.members);
     uniqueMembers.add(currentUser._id); // ensure creator
 
+    // Validate that all member users exist
     for (const id of uniqueMembers) {
       if (!(await ctx.db.get(id)))
         throw new Error(`User with ID ${id} not found`);

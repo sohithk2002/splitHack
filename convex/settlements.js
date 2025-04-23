@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 
 /* ============================================================================
  *  MUTATION: createSettlement
@@ -7,7 +8,7 @@ import { v } from "convex/values";
 
 export const createSettlement = mutation({
   args: {
-    amount: v.number(), // must be > 0
+    amount: v.number(), // must be > 0
     note: v.optional(v.string()),
     paidByUserId: v.id("users"),
     receivedByUserId: v.id("users"),
@@ -15,17 +16,8 @@ export const createSettlement = mutation({
     relatedExpenseIds: v.optional(v.array(v.id("expenses"))),
   },
   handler: async (ctx, args) => {
-    /* ── auth ────────────────────────────────────────────────────────────── */
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    const caller = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier)
-      )
-      .first();
-    if (!caller) throw new Error("User not found");
+    // Use centralized getCurrentUser function
+    const caller = await ctx.runQuery(internal.users.getCurrentUser);
 
     /* ── basic validation ────────────────────────────────────────────────── */
     if (args.amount <= 0) throw new Error("Amount must be positive");
@@ -77,16 +69,8 @@ export const getSettlementData = query({
     entityId: v.string(), // Convex _id (string form) of the user or group
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    const me = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier)
-      )
-      .first();
-    if (!me) throw new Error("User not found");
+    // Use centralized getCurrentUser function
+    const me = await ctx.runQuery(internal.users.getCurrentUser);
 
     if (args.entityType === "user") {
       /* ─────────────────────────────────────────────── user page */

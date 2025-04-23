@@ -1,19 +1,11 @@
 import { query } from "./_generated/server";
+import { internal } from "./_generated/api";
 
 // Get user balances
 export const getUserBalances = query({
   handler: async (ctx) => {
-    /* auth + user */
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier)
-      )
-      .first();
-    if (!user) throw new Error("User not found");
+    // Use the existing getCurrentUser function instead of repeating auth logic
+    const user = await ctx.runQuery(internal.users.getCurrentUser);
 
     /* ───────────── 1‑to‑1 expenses (no groupId) ───────────── */
     const expenses = (await ctx.db.query("expenses").collect()).filter(
@@ -95,21 +87,7 @@ export const getUserBalances = query({
 // Get total spent in the current year
 export const getTotalSpent = query({
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier)
-      )
-      .first();
-
-    if (!user) {
-      throw new Error("User not found");
-    }
+    const user = await ctx.runQuery(internal.users.getCurrentUser);
 
     // Get start of current year timestamp
     const currentYear = new Date().getFullYear();
@@ -147,21 +125,7 @@ export const getTotalSpent = query({
 // Get monthly spending
 export const getMonthlySpending = query({
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier)
-      )
-      .first();
-
-    if (!user) {
-      throw new Error("User not found");
-    }
+    const user = await ctx.runQuery(internal.users.getCurrentUser);
 
     // Get current year
     const currentYear = new Date().getFullYear();
@@ -224,21 +188,7 @@ export const getMonthlySpending = query({
 // Get groups for the current user
 export const getUserGroups = query({
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier)
-      )
-      .first();
-
-    if (!user) {
-      throw new Error("User not found");
-    }
+    const user = await ctx.runQuery(internal.users.getCurrentUser);
 
     // Get all groups
     const allGroups = await ctx.db.query("groups").collect();

@@ -66,21 +66,8 @@ export const searchUsers = query({
     query: v.string(),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const currentUser = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier)
-      )
-      .first();
-
-    if (!currentUser) {
-      throw new Error("User not found");
-    }
+    // Use centralized getCurrentUser function
+    const currentUser = await ctx.runQuery(internal.users.getCurrentUser);
 
     // Don't search if query is too short
     if (args.query.length < 2) {

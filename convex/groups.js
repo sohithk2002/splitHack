@@ -1,27 +1,14 @@
 import { query } from "./_generated/server";
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 
 export const getGroupMembers = query({
   args: {
     groupId: v.optional(v.id("groups")), // Optional - if provided, will return details for just this group
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    // Get current user
-    const currentUser = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier)
-      )
-      .first();
-
-    if (!currentUser) {
-      throw new Error("User not found");
-    }
+    // Use centralized getCurrentUser function
+    const currentUser = await ctx.runQuery(internal.users.getCurrentUser);
 
     // Get all groups where the user is a member
     const allGroups = await ctx.db.query("groups").collect();
@@ -93,16 +80,8 @@ export const getGroupMembers = query({
 export const getGroupExpenses = query({
   args: { groupId: v.id("groups") },
   handler: async (ctx, { groupId }) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    const currentUser = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier)
-      )
-      .first();
-    if (!currentUser) throw new Error("User not found");
+    // Use centralized getCurrentUser function
+    const currentUser = await ctx.runQuery(internal.users.getCurrentUser);
 
     const group = await ctx.db.get(groupId);
     if (!group) throw new Error("Group not found");
