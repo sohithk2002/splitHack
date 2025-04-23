@@ -31,28 +31,16 @@ export const seedDatabase = mutation({
       };
     }
 
-    // Step 2: Create default categories
-    const categories = await createCategories(ctx);
-
-    // Step 3: Create groups
+    // Step 2: Create groups
     const groups = await createGroups(ctx, users);
 
-    // Step 4: Create 1-on-1 expenses
-    const oneOnOneExpenses = await createOneOnOneExpenses(
-      ctx,
-      users,
-      categories
-    );
+    // Step 3: Create 1-on-1 expenses
+    const oneOnOneExpenses = await createOneOnOneExpenses(ctx, users);
 
-    // Step 5: Create group expenses
-    const groupExpenses = await createGroupExpenses(
-      ctx,
-      users,
-      groups,
-      categories
-    );
+    // Step 4: Create group expenses
+    const groupExpenses = await createGroupExpenses(ctx, users, groups);
 
-    // Step 6: Create settlements
+    // Step 5: Create settlements
     const settlements = await createSettlements(
       ctx,
       users,
@@ -66,7 +54,6 @@ export const seedDatabase = mutation({
       stats: {
         users: users.length,
         groups: groups.length,
-        categories: categories.length,
         oneOnOneExpenses: oneOnOneExpenses.length,
         groupExpenses: groupExpenses.length,
         settlements: settlements.length,
@@ -75,42 +62,14 @@ export const seedDatabase = mutation({
   },
 });
 
-// Helper to create default categories
-async function createCategories(ctx) {
-  const categoryDatas = [
-    { name: "Food & Drinks", icon: "Utensils", isDefault: true },
-    { name: "Transportation", icon: "Car", isDefault: true },
-    { name: "Housing", icon: "Home", isDefault: true },
-    { name: "Entertainment", icon: "Film", isDefault: true },
-    { name: "Shopping", icon: "ShoppingBag", isDefault: true },
-    { name: "Utilities", icon: "Bolt", isDefault: true },
-    { name: "Travel", icon: "Plane", isDefault: true },
-    { name: "Other", icon: "Ellipsis", isDefault: true },
-  ];
-
-  const categoryIds = [];
-  for (const categoryData of categoryDatas) {
-    const categoryId = await ctx.db.insert("categories", categoryData);
-    categoryIds.push(categoryId);
-  }
-
-  // Fetch all categories with their IDs
-  return await Promise.all(
-    categoryIds.map(async (id) => {
-      const category = await ctx.db.get(id);
-      return { ...category, _id: id };
-    })
-  );
-}
-
 // Helper to create groups
 async function createGroups(ctx, users) {
   const now = Date.now();
 
   // Using the users from your database
-  const user1 = users[0]; // Test
-  const user2 = users[1]; // Roadside Coder
-  const user3 = users[2]; // Piyush Agarwal
+  const user1 = users[0]; 
+  const user2 = users[1]; 
+  const user3 = users[2]; 
 
   const groupDatas = [
     {
@@ -160,22 +119,22 @@ async function createGroups(ctx, users) {
 }
 
 // Helper to create one-on-one expenses
-async function createOneOnOneExpenses(ctx, users, categories) {
+async function createOneOnOneExpenses(ctx, users) {
   const now = Date.now();
   const oneWeekAgo = now - 7 * 24 * 60 * 60 * 1000;
   const twoWeeksAgo = now - 14 * 24 * 60 * 60 * 1000;
   const oneMonthAgo = now - 30 * 24 * 60 * 60 * 1000;
 
   // Using the users from your database
-  const user1 = users[0]; // Test
-  const user2 = users[1]; // Roadside Coder
-  const user3 = users[2]; // Piyush Agarwal
+  const user1 = users[0];
+  const user2 = users[1];
+  const user3 = users[2];
 
   const expenseDatas = [
     {
       description: "Dinner at Indian Restaurant",
       amount: 1250.0,
-      category: categories[0].name, // Food & Drinks
+      category: "foodDrink", // Using ID from expense-categories.js
       date: twoWeeksAgo,
       paidByUserId: user1._id,
       splitType: "equal",
@@ -183,13 +142,12 @@ async function createOneOnOneExpenses(ctx, users, categories) {
         { userId: user1._id, amount: 625.0, paid: true },
         { userId: user2._id, amount: 625.0, paid: false },
       ],
-      // Using undefined instead of null for optional field
       createdBy: user1._id,
     },
     {
       description: "Cab ride to airport",
       amount: 450.0,
-      category: categories[1].name, // Transportation
+      category: "transportation", 
       date: oneWeekAgo,
       paidByUserId: user2._id,
       splitType: "equal",
@@ -197,13 +155,12 @@ async function createOneOnOneExpenses(ctx, users, categories) {
         { userId: user1._id, amount: 225.0, paid: false },
         { userId: user2._id, amount: 225.0, paid: true },
       ],
-      // Using undefined instead of null for optional field
       createdBy: user2._id,
     },
     {
       description: "Movie tickets",
       amount: 500.0,
-      category: categories[3].name, // Entertainment
+      category: "entertainment",
       date: oneWeekAgo + 2 * 24 * 60 * 60 * 1000,
       paidByUserId: user3._id,
       splitType: "equal",
@@ -211,13 +168,12 @@ async function createOneOnOneExpenses(ctx, users, categories) {
         { userId: user2._id, amount: 250.0, paid: false },
         { userId: user3._id, amount: 250.0, paid: true },
       ],
-      // Using undefined instead of null for optional field
       createdBy: user3._id,
     },
     {
       description: "Groceries",
       amount: 1875.5,
-      category: categories[0].name, // Food & Drinks
+      category: "groceries",
       date: oneMonthAgo,
       paidByUserId: user1._id,
       splitType: "percentage",
@@ -225,13 +181,12 @@ async function createOneOnOneExpenses(ctx, users, categories) {
         { userId: user1._id, amount: 1312.85, paid: true }, // 70%
         { userId: user3._id, amount: 562.65, paid: false }, // 30%
       ],
-      // Using undefined instead of null for optional field
       createdBy: user1._id,
     },
     {
       description: "Internet bill",
       amount: 1200.0,
-      category: categories[5].name, // Utilities
+      category: "utilities",
       date: now - 3 * 24 * 60 * 60 * 1000,
       paidByUserId: user2._id,
       splitType: "equal",
@@ -239,7 +194,6 @@ async function createOneOnOneExpenses(ctx, users, categories) {
         { userId: user2._id, amount: 600.0, paid: true },
         { userId: user3._id, amount: 600.0, paid: false },
       ],
-      // Using undefined instead of null for optional field
       createdBy: user2._id,
     },
   ];
@@ -260,22 +214,22 @@ async function createOneOnOneExpenses(ctx, users, categories) {
 }
 
 // Helper to create group expenses
-async function createGroupExpenses(ctx, users, groups, categories) {
+async function createGroupExpenses(ctx, users, groups) {
   const now = Date.now();
   const oneWeekAgo = now - 7 * 24 * 60 * 60 * 1000;
   const twoWeeksAgo = now - 14 * 24 * 60 * 60 * 1000;
 
   // Using the users from your database
-  const user1 = users[0]; // Test
-  const user2 = users[1]; // Roadside Coder
-  const user3 = users[2]; // Piyush Agarwal
+  const user1 = users[0];
+  const user2 = users[1];
+  const user3 = users[2];
 
   // Weekend Trip Group Expenses
   const weekendTripExpenses = [
     {
       description: "Hotel reservation",
       amount: 9500.0,
-      category: categories[2].name, // Housing
+      category: "housing",
       date: twoWeeksAgo,
       paidByUserId: user1._id,
       splitType: "equal",
@@ -290,7 +244,7 @@ async function createGroupExpenses(ctx, users, groups, categories) {
     {
       description: "Groceries for weekend",
       amount: 2450.75,
-      category: categories[0].name, // Food & Drinks
+      category: "groceries",
       date: twoWeeksAgo + 1 * 24 * 60 * 60 * 1000,
       paidByUserId: user2._id,
       splitType: "equal",
@@ -305,7 +259,7 @@ async function createGroupExpenses(ctx, users, groups, categories) {
     {
       description: "Sight-seeing tour",
       amount: 4500.0,
-      category: categories[3].name, // Entertainment
+      category: "entertainment",
       date: twoWeeksAgo + 2 * 24 * 60 * 60 * 1000,
       paidByUserId: user3._id,
       splitType: "equal",
@@ -324,7 +278,7 @@ async function createGroupExpenses(ctx, users, groups, categories) {
     {
       description: "Coffee and snacks",
       amount: 850.0,
-      category: categories[0].name, // Food & Drinks
+      category: "coffee",
       date: oneWeekAgo,
       paidByUserId: user2._id,
       splitType: "equal",
@@ -338,7 +292,7 @@ async function createGroupExpenses(ctx, users, groups, categories) {
     {
       description: "Office supplies",
       amount: 1250.4,
-      category: categories[4].name, // Shopping
+      category: "shopping",
       date: oneWeekAgo + 2 * 24 * 60 * 60 * 1000,
       paidByUserId: user3._id,
       splitType: "equal",
@@ -356,7 +310,7 @@ async function createGroupExpenses(ctx, users, groups, categories) {
     {
       description: "Domain purchase",
       amount: 1200.0,
-      category: categories[7].name, // Other
+      category: "technology",
       date: now - 5 * 24 * 60 * 60 * 1000,
       paidByUserId: user3._id,
       splitType: "equal",
@@ -371,7 +325,7 @@ async function createGroupExpenses(ctx, users, groups, categories) {
     {
       description: "Server hosting",
       amount: 3600.0,
-      category: categories[7].name, // Other
+      category: "bills",
       date: now - 4 * 24 * 60 * 60 * 1000,
       paidByUserId: user1._id,
       splitType: "equal",
@@ -386,7 +340,7 @@ async function createGroupExpenses(ctx, users, groups, categories) {
     {
       description: "Project dinner",
       amount: 4800.6,
-      category: categories[0].name, // Food & Drinks
+      category: "foodDrink",
       date: now - 2 * 24 * 60 * 60 * 1000,
       paidByUserId: user2._id,
       splitType: "percentage",
@@ -435,9 +389,9 @@ async function createSettlements(
   const fiveDaysAgo = now - 5 * 24 * 60 * 60 * 1000;
 
   // Using the users from your database
-  const user1 = users[0]; // Test
-  const user2 = users[1]; // Roadside Coder
-  const user3 = users[2]; // Piyush Agarwal
+  const user1 = users[0];
+  const user2 = users[1];
+  const user3 = users[2];
 
   // Find a one-on-one expense to settle
   const cabExpense = oneOnOneExpenses.find(
@@ -459,9 +413,8 @@ async function createSettlements(
       amount: 225.0, // Amount user1 owes to user2
       note: "For cab ride",
       date: fiveDaysAgo,
-      paidByUserId: user1._id, // Test pays
-      receivedByUserId: user2._id, // Roadside Coder receives
-      // Using undefined instead of null for optional field
+      paidByUserId: user1._id, // User1 pays
+      receivedByUserId: user2._id, // User2 receives
       relatedExpenseIds: cabExpense ? [cabExpense._id] : undefined,
       createdBy: user1._id,
     },
@@ -470,8 +423,8 @@ async function createSettlements(
       amount: 3166.67, // Amount user2 owes to user1
       note: "Hotel payment",
       date: threeDaysAgo,
-      paidByUserId: user2._id, // Roadside Coder pays
-      receivedByUserId: user1._id, // Test receives
+      paidByUserId: user2._id, // User2 pays
+      receivedByUserId: user1._id, // User1 receives
       groupId: groups[0]._id, // Weekend Trip Group
       relatedExpenseIds: hotelExpense ? [hotelExpense._id] : undefined,
       createdBy: user2._id,
@@ -481,8 +434,8 @@ async function createSettlements(
       amount: 425.0, // Amount user3 owes to user2
       note: "Office coffee",
       date: now - 1 * 24 * 60 * 60 * 1000,
-      paidByUserId: user3._id, // Piyush pays
-      receivedByUserId: user2._id, // Roadside Coder receives
+      paidByUserId: user3._id, // User3 pays
+      receivedByUserId: user2._id, // User2 receives
       groupId: groups[1]._id, // Office Expenses Group
       relatedExpenseIds: coffeeExpense ? [coffeeExpense._id] : undefined,
       createdBy: user3._id,
