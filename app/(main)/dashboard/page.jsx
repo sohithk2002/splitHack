@@ -149,7 +149,15 @@ export default function Dashboard() {
               {/* Balance details */}
               <Card>
                 <CardHeader className="pb-3">
-                  <CardTitle>Balance Details</CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle>Balance Details</CardTitle>
+                    <Button variant="link" asChild className="p-0">
+                      <Link href="/contacts">
+                        View all
+                        <ChevronRight className="ml-1 h-4 w-4" />
+                      </Link>
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <BalanceSummary balances={balances} />
