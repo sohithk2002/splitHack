@@ -145,108 +145,97 @@ export const calculateSplits = query({
 
 // Get expenses between current user and a specific person
 export const getExpensesBetweenUsers = query({
-  args: {
-    userId: v.id("users"),
-  },
-  handler: async (ctx, args) => {
-    // Use centralized getCurrentUser function
-    const currentUser = await ctx.runQuery(internal.users.getCurrentUser);
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }) => {
+    const me = await ctx.runQuery(internal.users.getCurrentUser);
+    if (me._id === userId) throw new Error("Cannot query yourself");
 
-    // Get all expenses where both users are involved (either as payer or in splits)
-    const allExpenses = await ctx.db.query("expenses").collect();
+    /* ───── 1. One-on-one expenses where either user is the payer ───── */
+    // Use the compound index (`paidByUserId`,`groupId`) with groupId = undefined
+    const myPaid = await ctx.db
+      .query("expenses")
+      .withIndex("by_user_and_group", (q) =>
+        q.eq("paidByUserId", me._id).eq("groupId", undefined)
+      )
+      .collect();
 
-    // Filter for expenses involving both users and not in a group
-    const expenses = allExpenses.filter((expense) => {
-      // Check if this is a one-on-one expense (not in a group)
-      if (expense.groupId) return false;
+    const theirPaid = await ctx.db
+      .query("expenses")
+      .withIndex("by_user_and_group", (q) =>
+        q.eq("paidByUserId", userId).eq("groupId", undefined)
+      )
+      .collect();
 
-      // Check if both users are involved
-      const currentUserInvolved =
-        expense.paidByUserId === currentUser._id ||
-        expense.splits.some((split) => split.userId === currentUser._id);
+    // Merge → candidate set is now just the rows either of us paid for
+    const candidateExpenses = [...myPaid, ...theirPaid];
 
-      const otherUserInvolved =
-        expense.paidByUserId === args.userId ||
-        expense.splits.some((split) => split.userId === args.userId);
+    /* ───── 2. Keep only rows where BOTH are involved (payer or split) ─ */
+    const expenses = candidateExpenses.filter((e) => {
+      // me is always involved (I’m the payer OR in splits – verified below)
+      const meInSplits = e.splits.some((s) => s.userId === me._id);
+      const themInSplits = e.splits.some((s) => s.userId === userId);
 
-      return currentUserInvolved && otherUserInvolved;
+      const meInvolved = e.paidByUserId === me._id || meInSplits;
+      const themInvolved = e.paidByUserId === userId || themInSplits;
+
+      return meInvolved && themInvolved;
     });
 
-    // Get the other user's details
-    const otherUser = await ctx.db.get(args.userId);
-    if (!otherUser) {
-      throw new Error("User not found");
-    }
-
-    // Sort expenses by date (newest first)
     expenses.sort((a, b) => b.date - a.date);
 
-    // Get all settlements between these two users
+    /* ───── 3. Settlements between the two of us (groupId = undefined) ─ */
     const settlements = await ctx.db
       .query("settlements")
       .filter((q) =>
         q.and(
-          q.eq(q.field("groupId"), undefined), // Only one-on-one settlements
+          q.eq(q.field("groupId"), undefined),
           q.or(
             q.and(
-              q.eq(q.field("paidByUserId"), currentUser._id),
-              q.eq(q.field("receivedByUserId"), args.userId)
+              q.eq(q.field("paidByUserId"), me._id),
+              q.eq(q.field("receivedByUserId"), userId)
             ),
             q.and(
-              q.eq(q.field("paidByUserId"), args.userId),
-              q.eq(q.field("receivedByUserId"), currentUser._id)
+              q.eq(q.field("paidByUserId"), userId),
+              q.eq(q.field("receivedByUserId"), me._id)
             )
           )
         )
       )
       .collect();
 
-    // Sort settlements by date (newest first)
     settlements.sort((a, b) => b.date - a.date);
 
-    // Calculate balances
+    /* ───── 4. Compute running balance ──────────────────────────────── */
     let balance = 0;
 
-    // First apply expenses
-    expenses.forEach((expense) => {
-      if (expense.paidByUserId === currentUser._id) {
-        // Current user paid
-        const otherUserSplit = expense.splits.find(
-          (split) => split.userId === args.userId
-        );
-        if (otherUserSplit && !otherUserSplit.paid) {
-          balance += otherUserSplit.amount; // Other user owes this to current user
-        }
-      } else if (expense.paidByUserId === args.userId) {
-        // Other user paid
-        const currentUserSplit = expense.splits.find(
-          (split) => split.userId === currentUser._id
-        );
-        if (currentUserSplit && !currentUserSplit.paid) {
-          balance -= currentUserSplit.amount; // Current user owes this to other user
-        }
-      }
-    });
-
-    // Then apply settlements
-    settlements.forEach((settlement) => {
-      if (settlement.paidByUserId === currentUser._id) {
-        // Current user paid other user
-        balance += settlement.amount;
+    for (const e of expenses) {
+      if (e.paidByUserId === me._id) {
+        const split = e.splits.find((s) => s.userId === userId && !s.paid);
+        if (split) balance += split.amount; // they owe me
       } else {
-        // Other user paid current user
-        balance -= settlement.amount;
+        const split = e.splits.find((s) => s.userId === me._id && !s.paid);
+        if (split) balance -= split.amount; // I owe them
       }
-    });
+    }
+
+    for (const s of settlements) {
+      if (s.paidByUserId === me._id)
+        balance += s.amount; // I paid them back
+      else balance -= s.amount; // they paid me back
+    }
+
+    /* ───── 5. Return payload ───────────────────────────────────────── */
+    const other = await ctx.db.get(userId);
+    if (!other) throw new Error("User not found");
 
     return {
       expenses,
       settlements,
       otherUser: {
-        id: otherUser._id,
-        name: otherUser.name,
-        email: otherUser.email,
-        imageUrl: otherUser.imageUrl,
+        id: other._id,
+        name: other.name,
+        email: other.email,
+        imageUrl: other.imageUrl,
       },
       balance,
     };
