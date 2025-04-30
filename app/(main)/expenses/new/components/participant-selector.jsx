@@ -128,7 +128,7 @@ export function ParticipantSelector({ participants, onParticipantsChange }) {
                     {searchResults?.map((user) => (
                       <CommandItem
                         key={user.id}
-                        value={user.id}
+                        value={user.name + user.email}
                         onSelect={() => addParticipant(user)}
                       >
                         <div className="flex items-center gap-2">

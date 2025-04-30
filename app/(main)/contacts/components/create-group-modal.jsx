@@ -218,7 +218,7 @@ export function CreateGroupModal({ isOpen, onClose, onSuccess }) {
                         {searchResults?.map((user) => (
                           <CommandItem
                             key={user.id}
-                            value={user.id}
+                            value={user.name + user.email}
                             onSelect={() => addMember(user)}
                           >
                             <div className="flex items-center gap-2">
