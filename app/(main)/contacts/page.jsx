@@ -48,7 +48,7 @@ export default function ContactsPage() {
 
   return (
     <div className="container mx-auto py-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4 justify-between mb-6">
         <h1 className="text-5xl gradient-title">Contacts</h1>
         <Button onClick={() => setIsCreateGroupModalOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />

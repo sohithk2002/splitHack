@@ -52,7 +52,7 @@ export default function GroupExpensesPage() {
           Back
         </Button>
 
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
           <div className="flex items-center gap-3">
             <div className="bg-primary/10 p-4 rounded-md">
               <Users className="h-8 w-8 text-primary" />

@@ -50,7 +50,7 @@ export default function PersonExpensesPage() {
           Back
         </Button>
 
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
           <div className="flex items-center gap-3">
             <Avatar className="h-16 w-16">
               <AvatarImage src={otherUser?.imageUrl} />
